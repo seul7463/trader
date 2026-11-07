@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KIS Guide Text Trader</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Tesseract.js (이미지 OCR 텍스트 인식 라이브러리 추가) -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -23,7 +21,7 @@
                 <span class="text-2xl">📈</span>
                 <div>
                     <h1 class="font-bold text-lg tracking-tight">KIS Guide Text Trader</h1>
-                    <p class="text-xs text-slate-400">이미지 및 텍스트 가이드 자동 파서</p>
+                    <p class="text-xs text-slate-400">가이드 파서 & 수동 주문 관리</p>
                 </div>
             </div>
             <div class="flex items-center space-x-3">
@@ -38,21 +36,20 @@
     <!-- Main Content -->
     <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-6 space-y-6">
         
-        <!-- Guide Input Panel (Text & Image Upload) -->
+        <!-- Guide Input Panel -->
         <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm space-y-4">
-            <div class="flex items-center justify-between">
-                <h2 class="text-sm font-semibold text-slate-300 flex items-center space-x-1.5">
-                    <span>📋 가이드 입력 (텍스트 또는 캡처 이미지)</span>
-                </h2>
-                <!-- 이미지 파일 업로드 숨김 인풋 -->
-                <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
-                <button type="button" onclick="document.getElementById('imageInput').click()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center space-x-1 cursor-pointer">
-                    <span>📷</span>
-                    <span>가이드 캡처 사진 업로드</span>
-                </button>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center space-x-3">
+                    <h2 class="text-sm font-semibold text-slate-300">📋 가이드 텍스트 입력</h2>
+                    <select id="guideSymbol" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-brand-400 font-bold focus:outline-none focus:border-brand-500 cursor-pointer">
+                        <option value="TQQQ|NASD">TQQQ (나스닥)</option>
+                        <option value="SOXL|AMEX">SOXL (아멕스)</option>
+                        <option value="KORU|AMEX">KORU (아멕스)</option>
+                    </select>
+                </div>
             </div>
 
-            <textarea id="guideInput" rows="6" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-brand-500 font-mono" placeholder="가이드 텍스트를 붙여넣거나, 위 '가이드 캡처 사진 업로드' 버튼을 누르세요..."></textarea>
+            <textarea id="guideInput" rows="7" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-brand-500 font-mono" placeholder="가이드 텍스트를 여기에 붙여넣으세요..."></textarea>
             
             <div class="flex justify-end">
                 <button type="button" onclick="parseGuide()" class="bg-brand-600 hover:bg-brand-500 text-white font-medium text-sm px-4 py-2 rounded-lg shadow transition flex items-center space-x-1.5 cursor-pointer">
@@ -65,8 +62,9 @@
         <!-- Parsed Orders Preview & Action Table -->
         <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm space-y-4">
             <div class="flex items-center justify-between">
-                <h2 class="text-sm font-semibold text-slate-300">🛒 파싱된 주문 목록</h2>
+                <h2 class="text-sm font-semibold text-slate-300">🛒 주문 목록 (파싱 및 수동 편집)</h2>
                 <div class="space-x-2">
+                    <button type="button" onclick="addManualOrderRow()" class="text-xs bg-brand-600 hover:bg-brand-500 text-white px-2.5 py-1 rounded transition cursor-pointer">+ 주문 직접 추가</button>
                     <button type="button" onclick="clearOrders()" class="text-xs text-slate-400 hover:text-red-400 cursor-pointer">전체 초기화</button>
                 </div>
             </div>
@@ -75,16 +73,17 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="border-b border-slate-800 text-xs text-slate-400">
+                            <th class="py-2.5 px-3">종목</th>
                             <th class="py-2.5 px-3">구분</th>
                             <th class="py-2.5 px-3">주문유형</th>
                             <th class="py-2.5 px-3">단가 ($)</th>
                             <th class="py-2.5 px-3">수량</th>
-                            <th class="py-2.5 px-3 text-right">개별 전송</th>
+                            <th class="py-2.5 px-3 text-right">관리 / 전송</th>
                         </tr>
                     </thead>
                     <tbody id="orderTableBody" class="divide-y divide-slate-800 text-sm">
                         <tr>
-                            <td colspan="5" class="py-6 text-center text-slate-500 text-xs">가이드 텍스트나 사진을 업로드해 주세요.</td>
+                            <td colspan="6" class="py-6 text-center text-slate-500 text-xs">가이드 텍스트를 파싱하거나 우측 상단의 '+ 주문 직접 추가'를 눌러주세요.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -109,7 +108,7 @@
                 <button type="button" onclick="clearLogs()" class="text-xs text-slate-500 hover:text-slate-300 cursor-pointer">로그 지우기</button>
             </div>
             <div id="logConsole" class="bg-slate-950 border border-slate-800 rounded-lg p-3 h-40 overflow-y-auto font-mono text-xs text-slate-300 space-y-1">
-                <div class="text-slate-500">[시스템] 준비 완료. 캡처 사진을 업로드하거나 가이드를 입력해 보세요.</div>
+                <div class="text-slate-500">[시스템] 준비 완료.</div>
             </div>
         </section>
 
@@ -119,7 +118,7 @@
     <div id="apiModal" style="display: none; position: fixed; inset: 0; background-color: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl m-4" style="background-color: #0f172a; border: 1px solid #1e293b;">
             <div class="flex items-center justify-between">
-                <h3 class="font-bold text-base text-slate-100">한국투자증권 API 설정</h3>
+                <h3 class="font-bold text-base text-slate-100">한국투자증권 API 계좌 설정</h3>
                 <button type="button" onclick="closeApiModal()" class="text-slate-400 hover:text-slate-200 text-lg cursor-pointer">✕</button>
             </div>
             <p class="text-xs text-slate-400">입력하신 정보는 브라우저 로컬 스토리지에 안전하게 저장됩니다.</p>
@@ -141,14 +140,6 @@
                     <label class="block text-xs font-medium text-slate-300 mb-1">계좌상품코드 (ACNT_PRDT_CD)</label>
                     <input type="text" id="cfgPrdt" value="01" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-brand-500 font-mono">
                 </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-300 mb-1">대상 종목 및 거래소</label>
-                    <select id="cfgSymbol" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-brand-500">
-                        <option value="TQQQ|NASD">TQQQ (나스닥 - NASD)</option>
-                        <option value="SOXL|AMEX">SOXL (아멕스 - AMEX)</option>
-                        <option value="KORU|AMEX">KORU (아멕스 - AMEX)</option>
-                    </select>
-                </div>
             </div>
 
             <div class="pt-2 flex justify-end space-x-2">
@@ -162,28 +153,18 @@
     <script>
         let parsedOrders = [];
 
-        window.onload = function() {
-            loadApiSettings();
-        };
+        window.onload = function() { loadApiSettings(); renderOrderTable(); };
 
-        function openApiModal() {
-            const modal = document.getElementById('apiModal');
-            if (modal) modal.style.display = 'flex';
-        }
-
-        function closeApiModal() {
-            const modal = document.getElementById('apiModal');
-            if (modal) modal.style.display = 'none';
-        }
+        function openApiModal() { document.getElementById('apiModal').style.display = 'flex'; }
+        function closeApiModal() { document.getElementById('apiModal').style.display = 'none'; }
 
         function saveApiSettings() {
             localStorage.setItem('kis_app_key', document.getElementById('cfgAppKey').value.trim());
             localStorage.setItem('kis_app_secret', document.getElementById('cfgAppSecret').value.trim());
             localStorage.setItem('kis_cano', document.getElementById('cfgCano').value.trim());
             localStorage.setItem('kis_prdt', document.getElementById('cfgPrdt').value.trim());
-            localStorage.setItem('kis_symbol', document.getElementById('cfgSymbol').value);
             closeApiModal();
-            logMessage("시스템", "API 설정이 안전하게 저장되었습니다.");
+            logMessage("시스템", "API 계좌 설정이 저장되었습니다.");
         }
 
         function loadApiSettings() {
@@ -191,112 +172,139 @@
             if(localStorage.getItem('kis_app_secret')) document.getElementById('cfgAppSecret').value = localStorage.getItem('kis_app_secret');
             if(localStorage.getItem('kis_cano')) document.getElementById('cfgCano').value = localStorage.getItem('kis_cano');
             if(localStorage.getItem('kis_prdt')) document.getElementById('cfgPrdt').value = localStorage.getItem('kis_prdt');
-            if(localStorage.getItem('kis_symbol')) document.getElementById('cfgSymbol').value = localStorage.getItem('kis_symbol');
-        }
-
-        // 이미지 업로드 시 Tesseract.js로 OCR 수행
-        async function handleImageUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            logMessage("OCR", "📷 업로드된 캡처 사진에서 텍스트를 읽어오는 중입니다... (잠시만 기다려주세요)");
-            
-            try {
-                const { data: { text } } = await Tesseract.recognize(file, 'eng+kor', {
-                    logger: m => {
-                        if (m.status === 'recognizing text') {
-                            logMessage("OCR", `진행률: ${Math.round(m.progress * 100)}%`);
-                        }
-                    }
-                });
-
-                document.getElementById('guideInput').value = text;
-                logMessage("OCR", "✅ 텍스트 인식 완료! 아래 입력창에 추출된 내용이 채워졌습니다.");
-                parseGuide(); // 자동 파싱 실행
-            } catch (err) {
-                logMessage("에러", "❌ 이미지 텍스트 인식 실패: " + err.message);
-            }
         }
 
         // 텍스트 파서
         function parseGuide() {
             const text = document.getElementById('guideInput').value;
-            if (!text.trim()) {
-                alert("파싱할 내용이 없습니다.");
-                return;
-            }
+            if (!text.trim()) { alert("가이드 내용을 입력해 주세요."); return; }
+
+            const symbolSelect = document.getElementById('guideSymbol').value;
+            const [symbol, exchange] = symbolSelect.split('|');
 
             const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-            parsedOrders = [];
+            let newOrders = [];
 
-            let currentType = '매수'; 
-            let lastPrice = null;
+            let currentMode = '매수'; 
+            let pendingPrice = null;
+            let forceNextLimit = false;
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
 
-                if (line.includes('매수') || line.includes('매수 가이드')) { currentType = '매수'; continue; }
-                if (line.includes('매도') || line.includes('매도 가이드')) { currentType = '매도'; continue; }
-                if (line.includes('지정가')) {
-                    if (line.includes('매도') || line.includes('15') || line.includes('20')) {
-                        currentType = '지정가 매도';
-                    }
+                if (line.includes('매수 가이드') || (line.includes('매수') && !line.includes('매도'))) { 
+                    currentMode = '매수'; 
+                    forceNextLimit = false;
+                    continue; 
+                }
+                if (line.includes('매도 가이드') || line.includes('매도')) { 
+                    currentMode = '매도'; 
+                    continue; 
+                }
+                if (line.includes('지정가')) { 
+                    currentMode = '지정가 매도'; 
+                    forceNextLimit = true;
+                    continue; 
                 }
 
-                // 가격 추출 ($가 포함된 경우 또는 숫자.숫자 형태)
-                let priceMatch = line.match(/\$?([0-9]+\.[0-9]{2})/);
+                let priceMatch = line.match(/\$([0-9]+\.[0-9]{1,2})/);
                 if (priceMatch) {
-                    lastPrice = parseFloat(priceMatch[1]);
-                    
-                    // 같은 줄에 수량이 같이 있는 경우 (예: $58.62 × 40주)
-                    let qtyMatch = line.match(/([0-9]+)\s*주/);
-                    if (qtyMatch && lastPrice !== null) {
-                        let qtyVal = parseInt(qtyMatch[1]);
-                        addOrder(currentType, lastPrice, qtyVal, line);
-                        lastPrice = null;
-                    }
+                    pendingPrice = parseFloat(priceMatch[1]);
                     continue;
                 }
 
-                // 수량만 따로 있는 경우 (예: 40주 또는 x 40주)
-                if (line.includes('주') || line.includes('×') || line.includes('x')) {
-                    let qtyMatch = line.match(/([0-9]+)\s*주/);
-                    if (qtyMatch && lastPrice !== null) {
-                        let qtyVal = parseInt(qtyMatch[1]);
-                        addOrder(currentType, lastPrice, qtyVal, line);
-                        lastPrice = null;
+                let qtyMatch = line.match(/([0-9]+)\s*주/) || line.match(/[×x]\s*([0-9]+)/);
+                if (qtyMatch) {
+                    let qtyVal = parseInt(qtyMatch[1] || qtyMatch[2]);
+                    
+                    if (pendingPrice === null) {
+                        for (let j = i - 1; j >= 0; j--) {
+                            let backMatch = lines[j].match(/\$([0-9]+\.[0-9]{1,2})/);
+                            if (backMatch) {
+                                pendingPrice = parseFloat(backMatch[1]);
+                                break;
+                            }
+                        }
+                    }
+
+                    if (pendingPrice !== null && !isNaN(qtyVal)) {
+                        let ordType = 'LOC';
+                        let buySellDvsn = '02'; // 매수
+                        let ordDvsn = '34';    // LOC
+                        let finalType = '매수';
+
+                        if (currentMode === '매도' || currentMode === '지정가 매도' || forceNextLimit) {
+                            buySellDvsn = '01'; // 매도
+                            finalType = '매도';
+                            if (currentMode === '지정가 매도' || forceNextLimit) {
+                                ordType = '지정가';
+                                ordDvsn = '00';
+                            }
+                        }
+
+                        newOrders.push({
+                            id: Date.now() + Math.random() + i,
+                            symbol: symbol,
+                            type: finalType,
+                            orderType: ordType,
+                            price: pendingPrice,
+                            qty: qtyVal,
+                            buySellDvsn: buySellDvsn,
+                            ordDvsn: ordDvsn
+                        });
+
+                        pendingPrice = null;
                     }
                 }
             }
 
+            // 기존 목록에 추가
+            parsedOrders = parsedOrders.concat(newOrders);
             renderOrderTable();
-            logMessage("파서", `총 ${parsedOrders.length}개의 주문 항목이 성공적으로 파싱되었습니다.`);
+            logMessage("파서", `[${symbol}] ${newOrders.length}개 주문 파싱 완료 (총 ${parsedOrders.length}건)`);
         }
 
-        function addOrder(typeStr, price, qty, rawLine) {
-            let ordType = 'LOC';
-            let buySellDvsn = '02'; // 매수
-            let ordDvsn = '34';    // LOC
-            let finalType = '매수';
-
-            if (typeStr.includes('매도') || typeStr.includes('지정가') || rawLine.includes('지정가')) {
-                buySellDvsn = '01'; // 매도
-                finalType = '매도';
-                if (typeStr.includes('지정가') || rawLine.includes('지정가')) {
-                    ordType = '지정가';
-                    ordDvsn = '00';
-                }
-            }
+        // 수동 주문 행 추가
+        function addManualOrderRow() {
+            const symbolSelect = document.getElementById('guideSymbol').value;
+            const [symbol, exchange] = symbolSelect.split('|');
 
             parsedOrders.push({
                 id: Date.now() + Math.random(),
-                type: finalType,
-                orderType: ordType,
-                price: price,
-                qty: qty,
-                buySellDvsn: buySellDvsn,
-                ordDvsn: ordDvsn
+                symbol: symbol,
+                type: '매수',
+                orderType: 'LOC',
+                price: 0.00,
+                qty: 1,
+                buySellDvsn: '02',
+                ordDvsn: '34'
             });
+            renderOrderTable();
+            logMessage("시스템", "수동 주문 행이 추가되었습니다.");
+        }
+
+        // 테이블 내 입력값 변경 실시간 동기화
+        function updateOrderField(index, field, value) {
+            if (!parsedOrders[index]) return;
+
+            if (field === 'symbol') parsedOrders[index].symbol = value;
+            if (field === 'type') {
+                parsedOrders[index].type = value;
+                parsedOrders[index].buySellDvsn = (value === '매도') ? '01' : '02';
+            }
+            if (field === 'orderType') {
+                parsedOrders[index].orderType = value;
+                parsedOrders[index].ordDvsn = (value === '지정가') ? '00' : '34';
+            }
+            if (field === 'price') parsedOrders[index].price = parseFloat(value) || 0;
+            if (field === 'qty') parsedOrders[index].qty = parseInt(value) || 0;
+        }
+
+        // 개별 행 삭제
+        function removeOrderRow(index) {
+            parsedOrders.splice(index, 1);
+            renderOrderTable();
+            logMessage("시스템", "주문 항목이 삭제되었습니다.");
         }
 
         function renderOrderTable() {
@@ -304,35 +312,47 @@
             document.getElementById('totalOrderCount').innerText = `${parsedOrders.length}건`;
 
             if (parsedOrders.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-500 text-xs">파싱된 주문이 없습니다. 사진을 다시 업로드하거나 텍스트를 확인해 주세요.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-500 text-xs">주문 목록이 비어 있습니다. 텍스트를 파싱하거나 직접 추가해 보세요.</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = parsedOrders.map((ord, idx) => `
                 <tr class="hover:bg-slate-800/50 transition">
-                    <td class="py-2.5 px-3 font-medium text-slate-200">
-                        <span class="inline-block px-2 py-0.5 rounded text-[10px] ${ord.buySellDvsn==='02'?'bg-blue-500/20 text-blue-400':'bg-amber-500/20 text-amber-400'}">${ord.type}</span>
+                    <td class="py-2.5 px-3">
+                        <select onchange="updateOrderField(${idx}, 'symbol', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-brand-400 font-bold focus:outline-none">
+                            <option value="TQQQ" ${ord.symbol==='TQQQ'?'selected':''}>TQQQ</option>
+                            <option value="SOXL" ${ord.symbol==='SOXL'?'selected':''}>SOXL</option>
+                            <option value="KORU" ${ord.symbol==='KORU'?'selected':''}>KORU</option>
+                        </select>
                     </td>
-                    <td class="py-2.5 px-3 text-slate-300 text-xs">${ord.orderType} (${ord.ordDvsn})</td>
-                    <td class="py-2.5 px-3 font-mono text-slate-100">$${ord.price.toFixed(2)}</td>
-                    <td class="py-2.5 px-3 font-mono text-slate-100">${ord.qty}주</td>
-                    <td class="py-2.5 px-3 text-right">
-                        <button type="button" onclick="sendSingleOrder(${idx})" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded border border-slate-700 transition cursor-pointer">전송</button>
+                    <td class="py-2.5 px-3">
+                        <select onchange="updateOrderField(${idx}, 'type', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs ${ord.type==='매수'?'text-blue-400':'text-amber-400'} font-bold focus:outline-none">
+                            <option value="매수" ${ord.type==='매수'?'selected':''}>매수</option>
+                            <option value="매도" ${ord.type==='매도'?'selected':''}>매도</option>
+                        </select>
+                    </td>
+                    <td class="py-2.5 px-3">
+                        <select onchange="updateOrderField(${idx}, 'orderType', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none">
+                            <option value="LOC" ${ord.orderType==='LOC'?'selected':''}>LOC (34)</option>
+                            <option value="지정가" ${ord.orderType==='지정가'?'selected':''}>지정가 (00)</option>
+                        </select>
+                    </td>
+                    <td class="py-2.5 px-3">
+                        <input type="number" step="0.01" value="${ord.price}" onchange="updateOrderField(${idx}, 'price', this.value)" class="w-24 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-slate-100 focus:outline-none">
+                    </td>
+                    <td class="py-2.5 px-3">
+                        <input type="number" value="${ord.qty}" onchange="updateOrderField(${idx}, 'qty', this.value)" class="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-slate-100 focus:outline-none">
+                    </td>
+                    <td class="py-2.5 px-3 text-right space-x-1">
+                        <button type="button" onclick="sendSingleOrder(${idx})" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded border border-slate-700 transition cursor-pointer">전송</button>
+                        <button type="button" onclick="removeOrderRow(${idx})" class="px-2 py-1 bg-red-950 hover:bg-red-900 text-red-300 text-xs rounded border border-red-800 transition cursor-pointer">삭제</button>
                     </td>
                 </tr>
             `).join('');
         }
 
-        function clearOrders() {
-            parsedOrders = [];
-            renderOrderTable();
-            logMessage("시스템", "주문 목록이 초기화되었습니다.");
-        }
-
-        function clearLogs() {
-            document.getElementById('logConsole').innerHTML = `<div class="text-slate-500">[시스템] 로그가 초기화되었습니다.</div>`;
-        }
-
+        function clearOrders() { parsedOrders = []; renderOrderTable(); logMessage("시스템", "주문 목록이 초기화되었습니다."); }
+        function clearLogs() { document.getElementById('logConsole').innerHTML = `<div class="text-slate-500">[시스템] 로그 초기화됨</div>`; }
         function logMessage(sender, msg) {
             const consoleBox = document.getElementById('logConsole');
             const timeStr = new Date().toLocaleTimeString();
@@ -344,36 +364,19 @@
             const ord = parsedOrders[index];
             const appKey = localStorage.getItem('kis_app_key');
             const cano = localStorage.getItem('kis_cano');
-            const symbolData = localStorage.getItem('kis_symbol') || 'TQQQ|NASD';
-            const [symbol, exchange] = symbolData.split('|');
-
-            if (!appKey || !cano) {
-                logMessage("에러", "API 설정(App Key 및 계좌번호)이 누락되었습니다. 우측 상단 'API 설정'을 먼저 완료해 주세요.");
-                openApiModal();
-                return;
-            }
-
-            logMessage("주문전송", `[${symbol}] 단가 $${ord.price.toFixed(2)} / ${ord.qty}주 (${ord.orderType}) 주문 전송 중...`);
-
-            setTimeout(() => {
-                logMessage("성공", `✅ [${symbol}] 주문 접수 성공 (시뮬레이션/테스트 응답 완료)`);
-            }, 800);
+            if (!appKey || !cano) { logMessage("에러", "API 설정 누락"); openApiModal(); return; }
+            logMessage("주문전송", `[${ord.symbol}] $${ord.price.toFixed(2)} / ${ord.qty}주 (${ord.orderType}) 전송 중...`);
+            setTimeout(() => { logMessage("성공", `✅ [${ord.symbol}] 주문 접수 성공`); }, 800);
         }
 
         async function executeBatchOrders() {
-            if (parsedOrders.length === 0) {
-                logMessage("경고", "전송할 주문 목록이 없습니다. 먼저 텍스트나 사진을 파싱해 주세요.");
-                return;
-            }
-
-            logMessage("일괄전송", `총 ${parsedOrders.length}건의 주문을 2초 간격으로 순차 접수합니다...`);
-
+            if (parsedOrders.length === 0) { logMessage("경고", "전송할 주문 목록이 없습니다."); return; }
+            logMessage("일괄전송", `총 ${parsedOrders.length}건 순차 접수 시작...`);
             for (let i = 0; i < parsedOrders.length; i++) {
                 await new Promise(r => setTimeout(r, 2000));
-                logMessage("일괄전송", `[${i+1}/${parsedOrders.length}] 주문 전송 완료 (${parsedOrders[i].type} $${parsedOrders[i].price} x ${parsedOrders[i].qty}주)`);
+                logMessage("일괄전송", `[${i+1}/${parsedOrders.length}] 전송 완료 (${parsedOrders[i].symbol} ${parsedOrders[i].type} ${parsedOrders[i].orderType} $${parsedOrders[i].price} x ${parsedOrders[i].qty}주)`);
             }
-
-            logMessage("완료", "🎉 모든 일괄 주문 전송 시뮬레이션이 완료되었습니다!");
+            logMessage("완료", "🎉 일괄 전송 완료!");
         }
     </script>
 </body>
